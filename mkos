@@ -1,0 +1,134 @@
+#!/bin/bash
+
+set -e
+set -x
+
+script_path=$(readlink -f $0)
+base_dir=$(dirname $script_path)
+work_dir=$base_dir/work
+rootfs_dir=$base_dir/rootfs
+n_jobs=8
+
+unpack_toolchain() {
+    pushd $work_dir
+    if [ ! -d x-tools7h ]; then
+        curl http://archlinuxarm.org/builder/xtools/x-tools7h.tar.xz | tar xJ
+    fi
+    popd
+}
+
+unpack_rootfs() {
+    local file_name=ArchLinuxARM-cubox-latest.tar.gz
+
+    if [ ! -d $rootfs_dir ]; then
+        mkdir -p $rootfs_dir
+
+        pushd $work_dir
+        curl -L -o $file_name http://archlinuxarm.org/os/$file_name
+        popd
+
+        pushd $rootfs_dir
+        tar xfz $work_dir/$file_name
+        rm -rf boot lib/modules
+        popd
+    fi
+}
+
+build_kernel() {
+    local target=arm-unknown-linux-gnueabi
+
+    pushd $work_dir
+
+    if [ ! -d olpc-kernel ]; then
+        git clone --depth=1 git://dev.laptop.org/olpc-kernel -b arm-3.0-wip
+    fi
+
+    cd olpc-kernel
+
+    local orig_path=$PATH
+
+    export ARCH=arm
+    export CROSS_COMPILE=$target-
+    export PATH=$PATH:$work_dir/x-tools7h/$target/bin
+
+    make xo_175_defconfig
+    make  -j$n_jobs zImage
+
+    mkdir -p $rootfs_dir/boot
+    cp arch/arm/boot/zImage $rootfs_dir/boot
+
+    make -j$n_jobs modules
+
+    INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$rootfs_dir \
+        make modules_install
+
+    unset ARCH CROSS_COMPILE
+
+    PATH=$orig_path
+
+    popd
+}
+
+write_olpcfth() {
+    cat > $rootfs_dir/boot/olpc.fth <<EOF
+\\ OLPC XO-1.75 boot script
+
+: olpc-fth-boot-me
+   " rw console=ttyS2,115200 console=tty0 " expand\$ to boot-file
+   " u:\\boot\\zImage" expand\$ to boot-device
+   " u:\\boot\\initrd.img" expand\$ to ramdisk
+   unfreeze
+   boot
+;
+
+olpc-fth-boot-me
+EOF
+}
+
+build_initramfs() {
+    pushd $work_dir
+
+    rm -rf initramfs
+    mkdir -p initramfs/{bin,sbin,etc,proc,sys,newroot}
+    cd initramfs
+
+    touch etc/mdev.conf
+
+    curl -o bin/busybox \
+        http://busybox.net/downloads/binaries/latest/busybox-armv7l
+
+    chmod +x bin/busybox
+    ln -s busybox bin/sh
+
+    cat > init <<EOF
+#!/bin/sh
+
+/bin/busybox --install -s
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+
+mknod /dev/null c 1 3
+mknod /dev/tty c 5 0
+mknod /dev/sda b 8 0
+mdev -s
+
+mount /dev/sda /newroot
+
+exec switch_root /newroot /sbin/init
+EOF
+
+    chmod +x init
+
+    find . | cpio -H newc -o > $rootfs_dir/boot/initramfs.img
+
+    popd
+}
+
+mkdir -p $work_dir
+
+unpack_toolchain
+unpack_rootfs
+build_kernel
+build_initramfs
+write_olpcfth
