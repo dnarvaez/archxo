@@ -77,7 +77,7 @@ write_olpcfth() {
    " rw console=ttyS2,115200 console=tty0 " expand\$ to boot-file
    " u:\\boot\\zImage" expand\$ to boot-device
    " u:\\boot\\initrd.img" expand\$ to ramdisk
-   unfreeze
+   dcon-unfreeze
    boot
 ;
 
@@ -89,8 +89,11 @@ build_initramfs() {
     pushd $work_dir
 
     rm -rf initramfs
-    mkdir -p initramfs/{bin,sbin,etc,proc,sys,newroot}
+    mkdir initramfs
     cd initramfs
+
+    mkdir bin sbin etc proc sys newroot
+    mkdir -p usr/{bin,sbin,etc,proc,sys,newroot,usr/bin}
 
     touch etc/mdev.conf
 
@@ -113,16 +116,28 @@ mknod /dev/tty c 5 0
 mknod /dev/sda b 8 0
 mdev -s
 
-mount /dev/sda /newroot
+until mount /dev/sda /newroot
+do
+    echo "Could not mount usb device, retrying in 1 second"
+    sleep 1
+done
 
 exec switch_root /newroot /sbin/init
 EOF
 
     chmod +x init
 
-    find . | cpio -H newc -o > $rootfs_dir/boot/initramfs.img
+    find . | cpio -H newc -o > $rootfs_dir/boot/initrd.img
 
     popd
+}
+
+pack_rootfs() {
+    tar cfJ rootfs.tar.xz roots
+}
+
+cleanup() {
+    rm -rf rootfs work
 }
 
 mkdir -p $work_dir
@@ -132,3 +147,5 @@ unpack_rootfs
 build_kernel
 build_initramfs
 write_olpcfth
+#pack_rootfs
+#cleanup
