@@ -28,7 +28,7 @@ unpack_rootfs() {
         popd
 
         pushd $rootfs_dir
-        tar xfz $work_dir/$file_name
+        tar xfJ $work_dir/$file_name
         rm -rf boot lib/modules
         popd
     fi
@@ -133,7 +133,9 @@ EOF
 }
 
 pack_rootfs() {
-    tar cfJ rootfs.tar.xz roots
+    pushd rootfs
+    tar cfJ $base_dir/rootfs.tar.xz *
+    popd
 }
 
 cleanup() {
@@ -147,5 +149,5 @@ unpack_rootfs
 build_kernel
 build_initramfs
 write_olpcfth
-#pack_rootfs
-#cleanup
+pack_rootfs
+cleanup
