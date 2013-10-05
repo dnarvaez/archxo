@@ -11,7 +11,7 @@ Mount it
 Unpack the roots
 
     cd /mnt
-    sudo tar xfJ /home/dnarvaez/rootfs.tar.xz
+    sudo tar xfJ ~/archxo-1.tar.xz
 
 Unmount the stick
 
