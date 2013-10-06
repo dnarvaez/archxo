@@ -18,13 +18,13 @@ unpack_toolchain() {
 }
 
 unpack_rootfs() {
-    local file_name=rootfs-armv7.tar.xz
+    local file_name=rootfs-armv7-1.tar.xz
 
     if [ ! -d $rootfs_dir ]; then
         mkdir -p $rootfs_dir
 
         pushd $work_dir
-        curl -L -o $file_name http://sugarlabs.org/~dnarvaez/$file_name
+        curl -L -o $file_name http://sugarlabs.org/~dnarvaez/archxo/$file_name
         popd
 
         pushd $rootfs_dir
