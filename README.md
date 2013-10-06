@@ -24,5 +24,5 @@ Finally plug in the stick and start the XO.
 This will include only the packages which are essential to boot, configure
 wifi and install packages.
 
-    pacstrap -d /rootfs systemd systemd-sysvcompat \
-        pacman netctl wpa_supplicant dialog linux-firmware
+    pacstrap -d /rootfs systemd systemd-sysvcompat pacman netctl \
+        wpa_supplicant dialog linux-firmware grep dhcpcd
