@@ -54,12 +54,11 @@ build_kernel() {
     make xo_175_defconfig
     make  -j$n_jobs zImage
 
-    mkdir -p $rootfs_dir/boot
-    cp arch/arm/boot/zImage $rootfs_dir/boot
+    cp arch/arm/boot/zImage $work_dir
 
     make -j$n_jobs modules
 
-    INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$rootfs_dir \
+    INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$work_dir \
         make modules_install
 
     unset ARCH CROSS_COMPILE
@@ -69,7 +68,13 @@ build_kernel() {
     popd
 }
 
-write_olpcfth() {
+tweak_rootfs() {
+    mkdir -p $rootfs_dir/boot
+
+    cp $work_dir/zImage $rootfs_dir/boot
+    cp -r $work_dir/lib/modules $rootfs_dir/modules
+    cp $work_dir/initrd.img $rootfs_dir/boot
+
     cat > $rootfs_dir/boot/olpc.fth <<EOF
 \\ OLPC XO-1.75 boot script
 
@@ -127,7 +132,7 @@ EOF
 
     chmod +x init
 
-    find . | cpio -H newc -o > $rootfs_dir/boot/initrd.img
+    find . | cpio -H newc -o > $work_dir/initrd.img
 
     popd
 }
@@ -142,12 +147,40 @@ cleanup() {
     rm -rf rootfs work
 }
 
+usage() {
+  echo "Usage: mkos %s [options]"
+  echo
+  echo "Options:"
+  echo "  -c    Clean up the work files"
+}
+
+inside_chroot=false
+
+while getopts 'fch' flag; do
+    case $flag in
+        h)
+            usage
+            exit
+            ;;
+        c)
+            cleanup
+            ;;
+        f)
+            inside_chroot=true
+            ;;
+    esac
+done
+
 mkdir -p $work_dir
 
-unpack_toolchain
-unpack_rootfs
-build_kernel
-build_initramfs
-write_olpcfth
-pack_rootfs
-cleanup
+if $inside_chroot; then
+    unpack_rootfs
+    tweak_rootfs
+    pack_rootfs
+else
+    unpack_toolchain
+    build_kernel
+    build_initramfs
+
+    fakeroot -- $0 -f
+fi
