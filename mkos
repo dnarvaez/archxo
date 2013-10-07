@@ -72,7 +72,8 @@ tweak_rootfs() {
     mkdir -p $rootfs_dir/boot
 
     cp $work_dir/zImage $rootfs_dir/boot
-    cp -r $work_dir/lib/modules $rootfs_dir/modules
+    cp -r $work_dir/lib/modules $rootfs_dir/lib
+
     cp $work_dir/initrd.img $rootfs_dir/boot
 
     cat > $rootfs_dir/boot/olpc.fth <<EOF
