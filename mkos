@@ -52,6 +52,14 @@ build_kernel() {
     export PATH=$PATH:$work_dir/x-tools7h/$target/bin
 
     make xo_175_defconfig
+
+    local to_enable=(CONFIG_UTS_NS CONFIG_IPC_NS CONFIG_USER_NS CONFIG_PID_NS
+                     CONFIG_NET_NS)
+    for option in "${to_enable[@]}"
+    do
+        sed -i "s/# $option is not set/$option=y/g" .config
+    done
+
     make  -j$n_jobs zImage
 
     cp arch/arm/boot/zImage $work_dir
