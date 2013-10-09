@@ -88,10 +88,10 @@ tweak_rootfs() {
 \\ OLPC XO-1.75 boot script
 
 : olpc-fth-boot-me
-   " rw console=ttyS2,115200 console=tty0 " expand\$ to boot-file
-   " u:\\boot\\zImage" expand\$ to boot-device
-   " u:\\boot\\initrd.img" expand\$ to ramdisk
-   dcon-unfreeze
+   " rw console=ttyS2,115200 console=tty0 " to boot-file
+   " u:\\boot\\zImage" to boot-device
+   " u:\\boot\\initrd.img" to ramdisk
+   visible
    boot
 ;
 
